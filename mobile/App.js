@@ -7,6 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import LoginScreen      from './src/screens/LoginScreen';
+import RegisterScreen   from './src/screens/RegisterScreen';
 import DashboardScreen  from './src/screens/DashboardScreen';
 import AnalyticsScreen  from './src/screens/AnalyticsScreen';
 import AIAssistantScreen from './src/screens/AIAssistantScreen';
@@ -95,7 +96,6 @@ export default function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
 
-  // Check if a token already exists on app launch
   useEffect(() => {
     AsyncStorage.getItem('token').then(token => {
       setIsLoggedIn(!!token);
@@ -113,15 +113,13 @@ export default function App() {
 
   return (
     <NavigationContainer>
-      <Stack.Navigator screenOptions={{ headerShown: false }}>
-        {isLoggedIn ? (
-          <Stack.Screen name="Main" component={MainTabs} />
-        ) : (
-          <>
-            <Stack.Screen name="Login"    component={LoginScreen} />
-            <Stack.Screen name="Main"     component={MainTabs} />
-          </>
-        )}
+      <Stack.Navigator
+        initialRouteName={isLoggedIn ? 'Main' : 'Login'}
+        screenOptions={{ headerShown: false }}
+      >
+        <Stack.Screen name="Login"    component={LoginScreen} />
+        <Stack.Screen name="Register" component={RegisterScreen} />
+        <Stack.Screen name="Main"     component={MainTabs} />
       </Stack.Navigator>
     </NavigationContainer>
   );
