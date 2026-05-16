@@ -9,6 +9,7 @@ const authRoutes        = require('./routes/auth');
 const transactionRoutes = require('./routes/transaction');
 const budgetRoutes      = require('./routes/budget');
 const analyticsRoutes   = require('./routes/analytics');
+const aiRoutes          = require('./routes/ai');
 
 const app = express();
 
@@ -48,6 +49,7 @@ app.use('/api/auth',         authLimiter, authRoutes);
 app.use('/api/transactions', transactionRoutes);
 app.use('/api/budgets',      budgetRoutes);
 app.use('/api/analytics',    analyticsRoutes);
+app.use('/api/ai',           aiRoutes);
 
 // ── Global error handler ──────────────────────────────────────────────────────
 app.use((err, req, res, next) => {
