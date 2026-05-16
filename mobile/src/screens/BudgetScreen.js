@@ -1,40 +1,39 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  Modal, TextInput, Alert, Dimensions,
+  Modal, TextInput, Alert, ActivityIndicator, RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import api from '../services/api';
 
-const { width } = Dimensions.get('window');
-
-// ── Initial Budget Data ───────────────────────────────────────────────────────
-const INITIAL_BUDGETS = [
-  { id: 1, category: 'Groceries',     icon: 'cart-outline',            color: '#E74C3C', spent: 515.20, limit: 500.00  },
-  { id: 2, category: 'Transport',     icon: 'car-outline',             color: '#E67E22', spent: 255.00, limit: 300.00  },
-  { id: 3, category: 'Entertainment', icon: 'film-outline',            color: '#0D2B2B', spent: 120.00, limit: 400.00  },
-  { id: 4, category: 'Utilities',     icon: 'flash-outline',           color: '#0D2B2B', spent: 180.00, limit: 250.00  },
-];
-
+// ── Category options ──────────────────────────────────────────────────────────
 const CATEGORY_OPTIONS = [
-  { label: 'Food & Drinks',   icon: 'fast-food-outline',      color: '#E74C3C' },
-  { label: 'Groceries',       icon: 'cart-outline',           color: '#E74C3C' },
-  { label: 'Transport',       icon: 'car-outline',            color: '#E67E22' },
-  { label: 'Entertainment',   icon: 'film-outline',           color: '#9B59B6' },
-  { label: 'Utilities',       icon: 'flash-outline',          color: '#3498DB' },
-  { label: 'Shopping',        icon: 'bag-outline',            color: '#EE4D2D' },
-  { label: 'Health',          icon: 'medkit-outline',         color: '#2ECC71' },
-  { label: 'Education',       icon: 'school-outline',         color: '#9B59B6' },
-  { label: 'Travel',          icon: 'airplane-outline',       color: '#3498DB' },
-  { label: 'Other',           icon: 'ellipsis-horizontal-outline', color: '#888' },
+  { label: 'Food & Drinks',   icon: 'fast-food-outline',          color: '#E74C3C' },
+  { label: 'Groceries',       icon: 'cart-outline',               color: '#E74C3C' },
+  { label: 'Transport',       icon: 'car-outline',                color: '#E67E22' },
+  { label: 'Entertainment',   icon: 'film-outline',               color: '#9B59B6' },
+  { label: 'Utilities',       icon: 'flash-outline',              color: '#3498DB' },
+  { label: 'Shopping',        icon: 'bag-outline',                color: '#EE4D2D' },
+  { label: 'Health',          icon: 'medkit-outline',             color: '#2ECC71' },
+  { label: 'Education',       icon: 'school-outline',             color: '#9B59B6' },
+  { label: 'Travel',          icon: 'airplane-outline',           color: '#3498DB' },
+  { label: 'Other',           icon: 'ellipsis-horizontal-outline',color: '#888'    },
 ];
+
+function getCategoryMeta(categoryName) {
+  const found = CATEGORY_OPTIONS.find(
+    c => c.label.toLowerCase() === categoryName?.toLowerCase()
+  );
+  return found || { icon: 'wallet-outline', color: '#0D2B2B' };
+}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function getStatus(spent, limit) {
   const pct = spent / limit;
   if (pct > 1)    return { label: `Over by ₱${(spent - limit).toFixed(2)}`, color: '#E74C3C', barColor: '#E74C3C' };
-  if (pct >= 0.8) return { label: '85% Limit',  color: '#E67E22', barColor: '#E67E22' };
-  return              { label: 'Healthy',      color: '#0D7B7B', barColor: '#0D2B2B' };
+  if (pct >= 0.8) return { label: `${Math.round(pct * 100)}% Limit`,        color: '#E67E22', barColor: '#E67E22' };
+  return              { label: 'Healthy',                                    color: '#0D7B7B', barColor: '#0D2B2B' };
 }
 
 // ── Progress Bar ──────────────────────────────────────────────────────────────
@@ -49,7 +48,9 @@ function ProgressBar({ spent, limit, barColor }) {
 
 // ── Budget Card ───────────────────────────────────────────────────────────────
 function BudgetCard({ item, onDelete }) {
-  const status = getStatus(item.spent, item.limit);
+  const status = getStatus(item.spent, item.limitAmt);
+  const meta   = getCategoryMeta(item.category);
+
   return (
     <TouchableOpacity
       style={bc.card}
@@ -62,44 +63,50 @@ function BudgetCard({ item, onDelete }) {
       activeOpacity={0.85}
     >
       <View style={bc.top}>
-        <View style={[bc.icon, { backgroundColor: item.color + '18' }]}>
-          <Ionicons name={item.icon} size={22} color={item.color} />
+        <View style={[bc.icon, { backgroundColor: meta.color + '18' }]}>
+          <Ionicons name={meta.icon} size={22} color={meta.color} />
         </View>
         <View style={bc.info}>
           <Text style={bc.name}>{item.category}</Text>
           <Text style={bc.sub}>
-            ₱{item.spent.toFixed(2)} / ₱{item.limit.toFixed(2)} used
+            ₱{item.spent.toFixed(2)} / ₱{item.limitAmt.toFixed(2)} used
           </Text>
         </View>
         <Text style={[bc.status, { color: status.color }]}>{status.label}</Text>
       </View>
-      <ProgressBar spent={item.spent} limit={item.limit} barColor={status.barColor} />
+      <ProgressBar spent={item.spent} limit={item.limitAmt} barColor={status.barColor} />
     </TouchableOpacity>
   );
 }
 
 // ── Add Budget Modal ──────────────────────────────────────────────────────────
 function AddBudgetModal({ visible, onClose, onAdd }) {
-  const [selected, setSelected] = useState(CATEGORY_OPTIONS[0]);
-  const [limit, setLimit]       = useState('');
+  const [selected, setSelected]     = useState(CATEGORY_OPTIONS[0]);
+  const [limit, setLimit]           = useState('');
   const [showPicker, setShowPicker] = useState(false);
+  const [loading, setLoading]       = useState(false);
 
-  const handleAdd = () => {
+  const handleAdd = async () => {
     if (!limit || isNaN(parseFloat(limit))) {
       Alert.alert('Invalid amount', 'Please enter a valid budget limit.');
       return;
     }
-    onAdd({
-      id:       Date.now(),
-      category: selected.label,
-      icon:     selected.icon,
-      color:    selected.color,
-      spent:    0,
-      limit:    parseFloat(limit),
-    });
-    setLimit('');
-    setSelected(CATEGORY_OPTIONS[0]);
-    onClose();
+    setLoading(true);
+    try {
+      const res = await api.post('/api/budgets', {
+        category: selected.label,
+        limitAmt: parseFloat(limit),
+        period:   'monthly',
+      });
+      onAdd({ ...res.data, spent: 0 });
+      setLimit('');
+      setSelected(CATEGORY_OPTIONS[0]);
+      onClose();
+    } catch (err) {
+      Alert.alert('Error', err.response?.data?.error || 'Failed to create budget.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -108,7 +115,6 @@ function AddBudgetModal({ visible, onClose, onAdd }) {
         <View style={modal.sheet}>
           <Text style={modal.title}>New Budget</Text>
 
-          {/* Category picker */}
           <Text style={modal.label}>Category</Text>
           <TouchableOpacity style={modal.picker} onPress={() => setShowPicker(p => !p)}>
             <View style={[modal.pickerIcon, { backgroundColor: selected.color + '18' }]}>
@@ -135,7 +141,6 @@ function AddBudgetModal({ visible, onClose, onAdd }) {
             </View>
           )}
 
-          {/* Limit amount */}
           <Text style={modal.label}>Monthly Limit (₱)</Text>
           <TextInput
             style={modal.input}
@@ -145,8 +150,8 @@ function AddBudgetModal({ visible, onClose, onAdd }) {
             onChangeText={setLimit}
           />
 
-          <TouchableOpacity style={modal.addBtn} onPress={handleAdd}>
-            <Text style={modal.addBtnText}>Add Budget</Text>
+          <TouchableOpacity style={[modal.addBtn, loading && { opacity: 0.7 }]} onPress={handleAdd} disabled={loading}>
+            {loading ? <ActivityIndicator color="#fff" /> : <Text style={modal.addBtnText}>Add Budget</Text>}
           </TouchableOpacity>
           <TouchableOpacity style={modal.cancelBtn} onPress={onClose}>
             <Text style={modal.cancelText}>Cancel</Text>
@@ -159,20 +164,63 @@ function AddBudgetModal({ visible, onClose, onAdd }) {
 
 // ── Budget Screen ─────────────────────────────────────────────────────────────
 export default function BudgetScreen() {
-  const [budgets, setBudgets]     = useState(INITIAL_BUDGETS);
-  const [modalVisible, setModal]  = useState(false);
+  const [budgets, setBudgets]       = useState([]);
+  const [loading, setLoading]       = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [modalVisible, setModal]    = useState(false);
 
-  const totalBudgeted = budgets.reduce((s, b) => s + b.limit, 0);
-  const totalSpent    = budgets.reduce((s, b) => s + b.spent, 0);
-  const remaining     = totalBudgeted - totalSpent;
+  const fetchBudgets = useCallback(async (isRefresh = false) => {
+    if (isRefresh) setRefreshing(true);
+    else setLoading(true);
+
+    try {
+      const res = await api.get('/api/budgets');
+      setBudgets(res.data);
+    } catch (err) {
+      Alert.alert('Error', 'Failed to load budgets.');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
+
+  useEffect(() => { fetchBudgets(); }, [fetchBudgets]);
 
   const handleAdd = (newBudget) => {
     setBudgets(prev => [...prev, newBudget]);
   };
 
-  const handleDelete = (id) => {
-    setBudgets(prev => prev.filter(b => b.id !== id));
+  const handleDelete = async (id) => {
+    try {
+      await api.delete(`/api/budgets/${id}`);
+      setBudgets(prev => prev.filter(b => b.id !== id));
+    } catch (err) {
+      Alert.alert('Error', 'Failed to delete budget.');
+    }
   };
+
+  const totalBudgeted = budgets.reduce((s, b) => s + b.limitAmt, 0);
+  const totalSpent    = budgets.reduce((s, b) => s + (b.spent || 0), 0);
+  const remaining     = totalBudgeted - totalSpent;
+
+  // AI insight based on real data
+  const overBudget = budgets.filter(b => b.spent > b.limitAmt);
+  const nearLimit  = budgets.filter(b => b.spent / b.limitAmt >= 0.8 && b.spent <= b.limitAmt);
+  const aiMsg = overBudget.length > 0
+    ? `You've exceeded your budget in ${overBudget.map(b => b.category).join(', ')}. Consider adjusting your spending.`
+    : nearLimit.length > 0
+    ? `You're close to your limit in ${nearLimit.map(b => b.category).join(', ')}. Monitor your spending carefully.`
+    : 'Your budgets are on track this month. Keep it up!';
+
+  if (loading) {
+    return (
+      <SafeAreaView style={s.safe}>
+        <View style={s.centered}>
+          <ActivityIndicator size="large" color="#0D2B2B" />
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={s.safe}>
@@ -189,8 +237,11 @@ export default function BudgetScreen() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
-
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={s.scroll}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => fetchBudgets(true)} tintColor="#0D2B2B" />}
+      >
         {/* ── AI Budget Analysis ── */}
         <View style={s.aiCard}>
           <View style={s.aiIconWrap}>
@@ -198,10 +249,7 @@ export default function BudgetScreen() {
           </View>
           <View style={s.aiContent}>
             <Text style={s.aiTitle}>AI Budget Analysis</Text>
-            <Text style={s.aiMsg}>
-              You're on track to overspend in 'Groceries' by ₱45 this month.
-              Consider reducing 'Dining Out' to compensate.
-            </Text>
+            <Text style={s.aiMsg}>{aiMsg}</Text>
           </View>
         </View>
 
@@ -224,20 +272,17 @@ export default function BudgetScreen() {
         {/* ── Active Budgets ── */}
         <View style={s.sectionHeader}>
           <Text style={s.sectionTitle}>Active Budgets</Text>
-          <TouchableOpacity>
-            <Text style={s.editAll}>Edit All ✎</Text>
-          </TouchableOpacity>
         </View>
 
-        {budgets.map(item => (
-          <BudgetCard key={item.id} item={item} onDelete={handleDelete} />
-        ))}
-
-        {budgets.length === 0 && (
+        {budgets.length === 0 ? (
           <View style={s.empty}>
             <Ionicons name="wallet-outline" size={48} color="#CCC" />
             <Text style={s.emptyText}>No budgets yet. Tap + to add one.</Text>
           </View>
+        ) : (
+          budgets.map(item => (
+            <BudgetCard key={item.id} item={item} onDelete={handleDelete} />
+          ))
         )}
 
         <View style={{ height: 80 }} />
@@ -259,38 +304,32 @@ export default function BudgetScreen() {
 
 // ── Styles ────────────────────────────────────────────────────────────────────
 const s = StyleSheet.create({
-  safe:   { flex: 1, backgroundColor: '#F7F8FA' },
-  scroll: { paddingHorizontal: 16, paddingBottom: 24 },
+  safe:    { flex: 1, backgroundColor: '#F7F8FA' },
+  scroll:  { paddingHorizontal: 16, paddingBottom: 24 },
+  centered:{ flex: 1, justifyContent: 'center', alignItems: 'center' },
 
-  // Header
   header:     { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12 },
   headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   avatar:     { width: 36, height: 36, borderRadius: 18, backgroundColor: '#0D2B2B', justifyContent: 'center', alignItems: 'center' },
   appName:    { fontSize: 18, fontWeight: '700', color: '#0D2B2B' },
 
-  // AI card
   aiCard:     { backgroundColor: '#0D2B2B', borderRadius: 16, padding: 16, flexDirection: 'row', alignItems: 'flex-start', marginBottom: 16 },
   aiIconWrap: { width: 40, height: 40, borderRadius: 10, backgroundColor: '#1A3F3F', justifyContent: 'center', alignItems: 'center', marginRight: 12 },
   aiContent:  { flex: 1 },
   aiTitle:    { fontSize: 16, fontWeight: '700', color: '#fff', marginBottom: 6 },
   aiMsg:      { fontSize: 13, color: '#A8C8C8', lineHeight: 20 },
 
-  // Summary
   summaryRow:   { flexDirection: 'row', gap: 12, marginBottom: 20 },
   summaryCard:  { flex: 1, backgroundColor: '#fff', borderRadius: 14, padding: 14, elevation: 1, shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 6 },
   summaryLabel: { fontSize: 10, color: '#888', letterSpacing: 0.5, marginBottom: 6 },
   summaryValue: { fontSize: 18, fontWeight: '800', color: '#0D2B2B' },
 
-  // Section header
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
   sectionTitle:  { fontSize: 18, fontWeight: '700', color: '#0D2B2B' },
-  editAll:       { fontSize: 13, fontWeight: '600', color: '#0D7B7B' },
 
-  // Empty
   empty:     { alignItems: 'center', paddingVertical: 40, gap: 12 },
   emptyText: { fontSize: 14, color: '#AAA' },
 
-  // FAB
   fab: { position: 'absolute', bottom: 24, right: 24, width: 56, height: 56, borderRadius: 28, backgroundColor: '#0D2B2B', justifyContent: 'center', alignItems: 'center', elevation: 6, shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 8 },
 });
 
