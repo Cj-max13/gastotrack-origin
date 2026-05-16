@@ -1,106 +1,25 @@
-import { useEffect, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
-import { NavigationContainer } from '@react-navigation/native';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { Ionicons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { AuthProvider } from './src/utils';
+import { Navigation } from './src/navigation';
 
-import LoginScreen      from './src/screens/LoginScreen';
-import RegisterScreen   from './src/screens/RegisterScreen';
-import DashboardScreen  from './src/screens/DashboardScreen';
-import AnalyticsScreen  from './src/screens/AnalyticsScreen';
-import AIAssistantScreen from './src/screens/AIAssistantScreen';
-import BudgetScreen     from './src/screens/BudgetScreen';
-import HistoryScreen    from './src/screens/HistoryScreen';
-
-const Tab   = createBottomTabNavigator();
-const Stack = createNativeStackNavigator();
-
-// ── Bottom Tab Navigator ─────────────────────────────────────────────────────
-function MainTabs() {
+// ── App with Auth Provider ───────────────────────────────────────────────────
+export default function App() {
   return (
-    <Tab.Navigator
-      initialRouteName="Dashboard"
-      screenOptions={{
-        tabBarActiveTintColor:   '#0D2B2B',
-        tabBarInactiveTintColor: '#9E9E9E',
-        tabBarStyle: {
-          backgroundColor: '#FFFFFF',
-          borderTopWidth:  1,
-          borderTopColor:  '#E0E0E0',
-          height:          60,
-          paddingBottom:   8,
-          paddingTop:      6,
-        },
-        tabBarLabelStyle: { fontSize: 11 },
-        headerShown: false,
-      }}
-    >
-      <Tab.Screen
-        name="Dashboard"
-        component={DashboardScreen}
-        options={{
-          tabBarLabel: 'Dashboard',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="grid-outline" size={size} color={color} />
-          ),
-        }}
-      />
-      <Tab.Screen
-        name="Analytics"
-        component={AnalyticsScreen}
-        options={{
-          tabBarLabel: 'Analytics',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="bar-chart-outline" size={size} color={color} />
-          ),
-        }}
-      />
-      <Tab.Screen
-        name="AIAssistant"
-        component={AIAssistantScreen}
-        options={{
-          tabBarLabel: 'AI Assistant',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="chatbubble-ellipses-outline" size={size} color={color} />
-          ),
-        }}
-      />
-      <Tab.Screen
-        name="Budget"
-        component={BudgetScreen}
-        options={{
-          tabBarLabel: 'Budget',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="wallet-outline" size={size} color={color} />
-          ),
-        }}
-      />
-      <Tab.Screen
-        name="History"
-        component={HistoryScreen}
-        options={{
-          tabBarLabel: 'History',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="time-outline" size={size} color={color} />
-          ),
-        }}
-      />
-    </Tab.Navigator>
+    <AuthProvider>
+      <Navigation />
+    </AuthProvider>
   );
 }
-
-// ── Root Navigator ───────────────────────────────────────────────────────────
-export default function App() {
-  const [isLoading, setIsLoading] = useState(true);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-
-  useEffect(() => {
-    AsyncStorage.getItem('token').then(token => {
-      setIsLoggedIn(!!token);
-      setIsLoading(false);
-    });
+      try {
+        const token = await AsyncStorage.getItem('token');
+        setIsLoggedIn(!!token);
+      } catch (err) {
+        console.log('Auth check error:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    checkAuth();
   }, []);
 
   if (isLoading) {
@@ -114,12 +33,16 @@ export default function App() {
   return (
     <NavigationContainer>
       <Stack.Navigator
-        initialRouteName={isLoggedIn ? 'Main' : 'Login'}
         screenOptions={{ headerShown: false }}
       >
-        <Stack.Screen name="Login"    component={LoginScreen} />
-        <Stack.Screen name="Register" component={RegisterScreen} />
-        <Stack.Screen name="Main"     component={MainTabs} />
+        {isLoggedIn ? (
+          <Stack.Screen name="Main" component={MainTabs} />
+        ) : (
+          <>
+            <Stack.Screen name="Login" component={LoginScreen} />
+            <Stack.Screen name="Register" component={RegisterScreen} />
+          </>
+        )}
       </Stack.Navigator>
     </NavigationContainer>
   );

@@ -116,7 +116,7 @@ export default function HistoryScreen() {
 
   useEffect(() => {
     fetchTransactions();
-  }, [fetchTransactions]);
+  }, []);
 
   const filtered = useMemo(() => {
     let list = transactions;

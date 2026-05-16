@@ -132,7 +132,7 @@ export default function DashboardScreen({ navigation }) {
     }
   }, []);
 
-  useEffect(() => { fetchDashboard(); }, [fetchDashboard]);
+  useEffect(() => { fetchDashboard(); }, []);
 
   const handleAdd = (newTx) => {
     if (!data) return;

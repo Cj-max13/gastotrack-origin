@@ -184,7 +184,7 @@ export default function BudgetScreen() {
     }
   }, []);
 
-  useEffect(() => { fetchBudgets(); }, [fetchBudgets]);
+  useEffect(() => { fetchBudgets(); }, []);
 
   const handleAdd = (newBudget) => {
     setBudgets(prev => [...prev, newBudget]);

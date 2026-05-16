@@ -9,15 +9,21 @@ const prisma  = new PrismaClient({ adapter });
 const register = async (req, res) => {
   const { name, email, password } = req.body;
 
+  console.log('[register] Received:', { name, email, hasPassword: !!password });
+
   try {
     const existing = await prisma.user.findUnique({ where: { email } });
-    if (existing)
+    if (existing) {
+      console.log('[register] Email already exists:', email);
       return res.status(400).json({ error: 'Email already registered' });
+    }
 
     const hashed = await bcrypt.hash(password, 10);
     const user   = await prisma.user.create({
       data: { name, email, password: hashed },
     });
+
+    console.log('[register] User created:', user.id);
 
     const token = jwt.sign(
       { userId: user.id },
@@ -27,7 +33,7 @@ const register = async (req, res) => {
 
     res.status(201).json({ token, user: { id: user.id, name, email } });
   } catch (err) {
-    console.error('[register error]', err.message);
+    console.error('[register error]', err.message, err.stack);
     res.status(500).json({ error: 'Registration failed. Please try again.' });
   }
 };

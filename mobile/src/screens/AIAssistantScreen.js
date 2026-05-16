@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TextInput, TouchableOpacity,
   FlatList, KeyboardAvoidingView, Platform, ActivityIndicator,
@@ -55,11 +55,11 @@ function TypingIndicator() {
     ).start();
   }, []);
 
-  useState(() => {
+  useEffect(() => {
     animate(dot1, 0);
     animate(dot2, 150);
     animate(dot3, 300);
-  });
+  }, []);
 
   return (
     <View style={typing.row}>

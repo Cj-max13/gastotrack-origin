@@ -30,6 +30,12 @@ app.use(cors({
 
 app.use(express.json());
 
+// ── Request logging ───────────────────────────────────────────────────────────
+app.use((req, res, next) => {
+  console.log(`${req.method} ${req.path}`);
+  next();
+});
+
 // ── Rate limiting on auth endpoints ──────────────────────────────────────────
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -74,4 +80,5 @@ app.listen(PORT, () => {
   console.log('  DELETE /api/budgets/:id');
   console.log('  GET    /api/analytics/summary?period=day|week|month');
   console.log('  GET    /api/analytics/dashboard');
+  console.log('  POST   /api/ai/chat');
 });
