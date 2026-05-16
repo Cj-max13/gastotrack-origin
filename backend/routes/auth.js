@@ -2,6 +2,8 @@ const express    = require('express');
 const router     = express.Router();
 const { body, validationResult } = require('express-validator');
 const { register, login } = require('../controllers/autController');
+const { getMe, updateMe } = require('../controllers/userController');
+const { protect } = require('../middleware/autMiddleware');
 
 // ── Validation middleware ─────────────────────────────────────────────────────
 const validate = (req, res, next) => {
@@ -25,5 +27,7 @@ const validateLogin = [
 // ── Routes ────────────────────────────────────────────────────────────────────
 router.post('/register', validateRegister, validate, register);
 router.post('/login',    validateLogin,    validate, login);
+router.get('/me',        protect, getMe);
+router.put('/me',        protect, updateMe);
 
 module.exports = router;
