@@ -2,7 +2,7 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TextInput, TouchableOpacity,
   FlatList, KeyboardAvoidingView, Platform, ActivityIndicator,
-  Animated,
+  Animated, Keyboard,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -88,7 +88,28 @@ export default function AIAssistantScreen() {
   const [input, setInput]         = useState('');
   const [isTyping, setIsTyping]   = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(true);
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
   const listRef = useRef(null);
+  const inputRef = useRef(null);
+
+  useEffect(() => {
+    const keyboardDidShowListener = Keyboard.addListener(
+      'keyboardDidShow',
+      () => {
+        setKeyboardVisible(true);
+        setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 100);
+      }
+    );
+    const keyboardDidHideListener = Keyboard.addListener(
+      'keyboardDidHide',
+      () => setKeyboardVisible(false)
+    );
+
+    return () => {
+      keyboardDidShowListener.remove();
+      keyboardDidHideListener.remove();
+    };
+  }, []);
 
   const sendMessage = useCallback(async (text) => {
     const userText = (text || input).trim();
@@ -174,22 +195,22 @@ export default function AIAssistantScreen() {
       </View>
 
       {/* ── Hero section (shown when no user messages yet) ── */}
-      {showSuggestions && (
+      {showSuggestions && !keyboardVisible && (
         <View style={s.hero}>
           <View style={s.heroIcon}>
             <Ionicons name="hardware-chip-outline" size={28} color="#fff" />
           </View>
           <Text style={s.heroTitle}>How can I help with your finances today?</Text>
           <Text style={s.heroSub}>
-            Your AI assistant is ready to analyze your spending and budgeting patterns.
+            Gasto is ready to analyze your spending and budgeting patterns.
           </Text>
         </View>
       )}
 
       <KeyboardAvoidingView
         style={s.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
       >
         {/* ── Messages ── */}
         <FlatList
@@ -204,7 +225,7 @@ export default function AIAssistantScreen() {
         />
 
         {/* ── Suggestions ── */}
-        {showSuggestions && (
+        {showSuggestions && !keyboardVisible && (
           <View style={s.suggestions}>
             {SUGGESTIONS.map((s_, i) => (
               <TouchableOpacity
@@ -225,8 +246,9 @@ export default function AIAssistantScreen() {
             <Ionicons name="attach-outline" size={22} color="#888" />
           </TouchableOpacity>
           <TextInput
+            ref={inputRef}
             style={s.input}
-            placeholder="Ask GastoTrack AI..."
+            placeholder="Ask Gasto..."
             placeholderTextColor="#AAA"
             value={input}
             onChangeText={setInput}
@@ -234,6 +256,10 @@ export default function AIAssistantScreen() {
             maxLength={500}
             onSubmitEditing={() => sendMessage()}
             returnKeyType="send"
+            blurOnSubmit={false}
+            onFocus={() => {
+              setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 300);
+            }}
           />
           <TouchableOpacity
             style={[s.sendBtn, (!input.trim() || isTyping) && s.sendBtnDisabled]}
@@ -247,7 +273,7 @@ export default function AIAssistantScreen() {
           </TouchableOpacity>
         </View>
 
-        <Text style={s.disclaimer}>AI can make mistakes. Verify important financial data.</Text>
+        <Text style={s.disclaimer}>Gasto can make mistakes. Verify important financial data.</Text>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -276,7 +302,7 @@ const s = StyleSheet.create({
 
   inputBar:    { flexDirection: 'row', alignItems: 'flex-end', paddingHorizontal: 12, paddingVertical: 10, backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: '#EEE', gap: 8 },
   attachBtn:   { padding: 6 },
-  input:       { flex: 1, fontSize: 15, color: '#333', maxHeight: 100, paddingVertical: 8 },
+  input:       { flex: 1, fontSize: 15, color: '#333', maxHeight: 100, minHeight: 40, paddingVertical: 8, paddingHorizontal: 12, backgroundColor: '#F7F8FA', borderRadius: 20, textAlignVertical: 'center' },
   sendBtn:     { width: 40, height: 40, borderRadius: 20, backgroundColor: '#0D2B2B', justifyContent: 'center', alignItems: 'center' },
   sendBtnDisabled: { backgroundColor: '#AAA' },
 

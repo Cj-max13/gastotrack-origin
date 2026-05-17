@@ -109,7 +109,7 @@ function ExpenditureRow({ item, total, color }) {
 }
 
 // ── Analytics Screen ──────────────────────────────────────────────────────────
-export default function AnalyticsScreen() {
+export default function AnalyticsScreen({ navigation }) {
   const [period, setPeriod]         = useState('Week');
   const [data, setData]             = useState(null);
   const [loading, setLoading]       = useState(true);
@@ -131,6 +131,14 @@ export default function AnalyticsScreen() {
   }, [period]);
 
   useEffect(() => { fetchAnalytics(period); }, [period]);
+
+  // Refresh when screen comes into focus
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      fetchAnalytics(period, true);
+    });
+    return unsubscribe;
+  }, [navigation, period]);
 
   const handlePeriodChange = (p) => {
     setPeriod(p);
@@ -245,7 +253,7 @@ export default function AnalyticsScreen() {
                 <Ionicons name="hardware-chip-outline" size={18} color="#0D2B2B" />
               </View>
               <View style={s.insightText}>
-                <Text style={s.insightLabel}>AI Insight</Text>
+                <Text style={s.insightLabel}>Gasto</Text>
                 <Text style={s.insightMsg}>
                   {vsLast > 0
                     ? `Your spending is ${vsLast}% higher than last ${period.toLowerCase()}. Consider reviewing your expenses.`

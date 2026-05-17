@@ -60,4 +60,35 @@ const deleteTransaction = async (req, res) => {
   }
 };
 
-module.exports = { getTransactions, createTransaction, deleteTransaction };
+// PUT /api/transactions/:id — update a transaction
+const updateTransaction = async (req, res) => {
+  const id = parseInt(req.params.id);
+  const { amount, merchant, category, source, notes, date } = req.body;
+
+  try {
+    const tx = await prisma.transaction.findUnique({ where: { id } });
+
+    if (!tx || tx.userId !== req.userId) {
+      return res.status(404).json({ error: 'Transaction not found' });
+    }
+
+    const updated = await prisma.transaction.update({
+      where: { id },
+      data: {
+        amount:   amount !== undefined ? parseFloat(amount) : tx.amount,
+        merchant: merchant || tx.merchant,
+        category: category || tx.category,
+        source:   source || tx.source,
+        notes:    notes !== undefined ? notes : tx.notes,
+        date:     date ? new Date(date) : tx.date,
+      },
+    });
+
+    res.json(updated);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to update transaction' });
+  }
+};
+
+module.exports = { getTransactions, createTransaction, deleteTransaction, updateTransaction };

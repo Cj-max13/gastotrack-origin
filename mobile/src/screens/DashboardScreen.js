@@ -11,6 +11,55 @@ const { width } = Dimensions.get('window');
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
+// ── Category options ──────────────────────────────────────────────────────────
+const CATEGORY_OPTIONS = [
+  { label: 'Food & Drinks',   icon: 'fast-food-outline',          color: '#E74C3C' },
+  { label: 'Groceries',       icon: 'cart-outline',               color: '#27AE60' },
+  { label: 'Transport',       icon: 'car-outline',                color: '#E67E22' },
+  { label: 'Entertainment',   icon: 'film-outline',               color: '#9B59B6' },
+  { label: 'Utilities',       icon: 'flash-outline',              color: '#3498DB' },
+  { label: 'Shopping',        icon: 'bag-outline',                color: '#EE4D2D' },
+  { label: 'Health',          icon: 'medkit-outline',             color: '#2ECC71' },
+  { label: 'Education',       icon: 'school-outline',             color: '#9B59B6' },
+  { label: 'Travel',          icon: 'airplane-outline',           color: '#3498DB' },
+  { label: 'Rent',            icon: 'home-outline',               color: '#34495E' },
+  { label: 'Insurance',       icon: 'shield-checkmark-outline',   color: '#16A085' },
+  { label: 'Fitness',         icon: 'barbell-outline',            color: '#E67E22' },
+  { label: 'Beauty',          icon: 'cut-outline',                color: '#E91E63' },
+  { label: 'Clothing',        icon: 'shirt-outline',              color: '#9C27B0' },
+  { label: 'Electronics',     icon: 'phone-portrait-outline',     color: '#607D8B' },
+  { label: 'Gifts',           icon: 'gift-outline',               color: '#F39C12' },
+  { label: 'Pets',            icon: 'paw-outline',                color: '#8E44AD' },
+  { label: 'Bills',           icon: 'receipt-outline',            color: '#C0392B' },
+  { label: 'Internet',        icon: 'wifi-outline',               color: '#2980B9' },
+  { label: 'Phone',           icon: 'call-outline',               color: '#27AE60' },
+  { label: 'Subscriptions',   icon: 'repeat-outline',             color: '#E74C3C' },
+  { label: 'Coffee',          icon: 'cafe-outline',               color: '#795548' },
+  { label: 'Restaurants',     icon: 'restaurant-outline',         color: '#FF5722' },
+  { label: 'Gas',             icon: 'speedometer-outline',        color: '#FF9800' },
+  { label: 'Parking',         icon: 'car-sport-outline',          color: '#9E9E9E' },
+  { label: 'Taxi/Ride',       icon: 'car-outline',                color: '#FFC107' },
+  { label: 'Books',           icon: 'book-outline',               color: '#5D4037' },
+  { label: 'Hobbies',         icon: 'game-controller-outline',    color: '#673AB7' },
+  { label: 'Sports',          icon: 'football-outline',           color: '#4CAF50' },
+  { label: 'Streaming',       icon: 'tv-outline',                 color: '#E91E63' },
+  { label: 'Gaming',          icon: 'game-controller-outline',    color: '#9C27B0' },
+  { label: 'Charity',         icon: 'heart-outline',              color: '#E91E63' },
+  { label: 'Savings',         icon: 'wallet-outline',             color: '#4CAF50' },
+  { label: 'Investments',     icon: 'trending-up-outline',        color: '#009688' },
+  { label: 'Loans',           icon: 'card-outline',               color: '#F44336' },
+  { label: 'Taxes',           icon: 'document-text-outline',      color: '#607D8B' },
+  { label: 'Childcare',       icon: 'happy-outline',              color: '#FF9800' },
+  { label: 'Home Maintenance',icon: 'hammer-outline',             color: '#795548' },
+  { label: 'Furniture',       icon: 'bed-outline',                color: '#8D6E63' },
+  { label: 'Laundry',         icon: 'water-outline',              color: '#00BCD4' },
+  { label: 'Personal Care',   icon: 'person-outline',             color: '#E91E63' },
+  { label: 'Medical',         icon: 'medical-outline',            color: '#F44336' },
+  { label: 'Pharmacy',        icon: 'bandage-outline',            color: '#4CAF50' },
+  { label: 'Office Supplies', icon: 'briefcase-outline',          color: '#607D8B' },
+  { label: 'Other',           icon: 'ellipsis-horizontal-outline',color: '#888'    },
+];
+
 // ── Bar Chart ────────────────────────────────────────────────────────────────
 function BarChart({ data, activeBudget }) {
   const max      = Math.max(...data, 1);
@@ -50,11 +99,12 @@ function BarChart({ data, activeBudget }) {
 
 // ── New Transaction Modal ────────────────────────────────────────────────────
 function NewTransactionModal({ visible, onClose, onAdd }) {
-  const [name, setName]     = useState('');
-  const [amount, setAmount] = useState('');
-  const [category, setCat]  = useState('');
-  const [source, setSource] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [name, setName]         = useState('');
+  const [amount, setAmount]     = useState('');
+  const [category, setCat]      = useState(CATEGORY_OPTIONS[0]);
+  const [source, setSource]     = useState('');
+  const [loading, setLoading]   = useState(false);
+  const [showPicker, setShowPicker] = useState(false);
 
   const handleAdd = async () => {
     if (!name || !amount) {
@@ -66,11 +116,11 @@ function NewTransactionModal({ visible, onClose, onAdd }) {
       const res = await api.post('/api/transactions', {
         merchant: name,
         amount:   -Math.abs(parseFloat(amount)), // expenses are negative
-        category: category || 'Uncategorized',
-        source:   source   || 'manual',
+        category: category.label,
+        source:   source || 'manual',
       });
       onAdd(res.data);
-      setName(''); setAmount(''); setCat(''); setSource('');
+      setName(''); setAmount(''); setCat(CATEGORY_OPTIONS[0]); setSource('');
       onClose();
     } catch (err) {
       Alert.alert('Error', err.response?.data?.error || 'Failed to add transaction.');
@@ -92,7 +142,30 @@ function NewTransactionModal({ visible, onClose, onAdd }) {
           <TextInput style={modal.input} placeholder="0.00" keyboardType="numeric" value={amount} onChangeText={setAmount} />
 
           <Text style={modal.label}>Category</Text>
-          <TextInput style={modal.input} placeholder="e.g. Dining, Transport" value={category} onChangeText={setCat} />
+          <TouchableOpacity style={modal.picker} onPress={() => setShowPicker(p => !p)}>
+            <View style={[modal.pickerIcon, { backgroundColor: category.color + '18' }]}>
+              <Ionicons name={category.icon} size={18} color={category.color} />
+            </View>
+            <Text style={modal.pickerText}>{category.label}</Text>
+            <Ionicons name={showPicker ? 'chevron-up' : 'chevron-down'} size={18} color="#AAA" />
+          </TouchableOpacity>
+
+          {showPicker && (
+            <ScrollView style={modal.dropdownList} nestedScrollEnabled>
+              {CATEGORY_OPTIONS.map(opt => (
+                <TouchableOpacity
+                  key={opt.label}
+                  style={modal.dropdownItem}
+                  onPress={() => { setCat(opt); setShowPicker(false); }}
+                >
+                  <View style={[modal.pickerIcon, { backgroundColor: opt.color + '18' }]}>
+                    <Ionicons name={opt.icon} size={16} color={opt.color} />
+                  </View>
+                  <Text style={modal.dropdownText}>{opt.label}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          )}
 
           <Text style={modal.label}>Payment Source</Text>
           <TextInput style={modal.input} placeholder="e.g. GCash, Maya, Cash" value={source} onChangeText={setSource} />
@@ -116,14 +189,19 @@ export default function DashboardScreen({ navigation }) {
   const [loading, setLoading]         = useState(true);
   const [refreshing, setRefreshing]   = useState(false);
   const [modalVisible, setModal]      = useState(false);
+  const [aiInsight, setAIInsight]     = useState({ insight: 'Loading insights...', icon: 'chatbubble-ellipses-outline' });
 
   const fetchDashboard = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
     else setLoading(true);
 
     try {
-      const res = await api.get('/api/analytics/dashboard');
-      setData(res.data);
+      const [dashboardRes, insightRes] = await Promise.all([
+        api.get('/api/analytics/dashboard'),
+        api.get('/api/analytics/ai-insight'),
+      ]);
+      setData(dashboardRes.data);
+      setAIInsight(insightRes.data);
     } catch (err) {
       Alert.alert('Error', 'Failed to load dashboard data.');
     } finally {
@@ -133,6 +211,14 @@ export default function DashboardScreen({ navigation }) {
   }, []);
 
   useEffect(() => { fetchDashboard(); }, []);
+
+  // Refresh when screen comes into focus
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      fetchDashboard(true);
+    });
+    return unsubscribe;
+  }, [navigation]);
 
   const handleAdd = (newTx) => {
     if (!data) return;
@@ -222,13 +308,11 @@ export default function DashboardScreen({ navigation }) {
         {/* ── AI Assistant Tip ── */}
         <View style={s.aiRow}>
           <View style={s.aiIcon}>
-            <Ionicons name="chatbubble-ellipses-outline" size={22} color="#0D2B2B" />
+            <Ionicons name={aiInsight.icon} size={22} color="#0D2B2B" />
           </View>
           <View style={s.aiText}>
-            <Text style={s.aiTitle}>AI Assistant</Text>
-            <Text style={s.aiSub}>
-              "Your dining expenses are 15% higher this week. Consider exploring your meal prep history."
-            </Text>
+            <Text style={s.aiTitle}>Gasto</Text>
+            <Text style={s.aiSub}>{aiInsight.insight}</Text>
           </View>
         </View>
 
@@ -340,13 +424,19 @@ const chart = StyleSheet.create({
 });
 
 const modal = StyleSheet.create({
-  overlay:    { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
-  sheet:      { backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24 },
-  title:      { fontSize: 20, fontWeight: '700', color: '#0D2B2B', marginBottom: 20 },
-  label:      { fontSize: 13, color: '#555', marginBottom: 6 },
-  input:      { borderWidth: 1, borderColor: '#DDD', borderRadius: 10, padding: 12, fontSize: 15, marginBottom: 14 },
-  addBtn:     { backgroundColor: '#0D2B2B', borderRadius: 12, paddingVertical: 14, alignItems: 'center', marginBottom: 10 },
-  addBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
-  cancelBtn:  { alignItems: 'center', paddingVertical: 10 },
-  cancelText: { color: '#888', fontSize: 14 },
+  overlay:      { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
+  sheet:        { backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24 },
+  title:        { fontSize: 20, fontWeight: '700', color: '#0D2B2B', marginBottom: 20 },
+  label:        { fontSize: 13, color: '#555', marginBottom: 6 },
+  input:        { borderWidth: 1, borderColor: '#DDD', borderRadius: 10, padding: 12, fontSize: 15, marginBottom: 14 },
+  picker:       { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: '#DDD', borderRadius: 10, padding: 12, marginBottom: 8 },
+  pickerIcon:   { width: 28, height: 28, borderRadius: 14, justifyContent: 'center', alignItems: 'center', marginRight: 10 },
+  pickerText:   { flex: 1, fontSize: 15, color: '#333' },
+  dropdownList: { borderWidth: 1, borderColor: '#EEE', borderRadius: 10, marginBottom: 16, maxHeight: 200, overflow: 'hidden' },
+  dropdownItem: { flexDirection: 'row', alignItems: 'center', padding: 10, borderBottomWidth: 1, borderBottomColor: '#F5F5F5' },
+  dropdownText: { fontSize: 14, color: '#333', marginLeft: 8 },
+  addBtn:       { backgroundColor: '#0D2B2B', borderRadius: 12, paddingVertical: 14, alignItems: 'center', marginBottom: 10 },
+  addBtnText:   { color: '#fff', fontSize: 16, fontWeight: '700' },
+  cancelBtn:    { alignItems: 'center', paddingVertical: 10 },
+  cancelText:   { color: '#888', fontSize: 14 },
 });

@@ -91,7 +91,7 @@ const chat = async (req, res) => {
   try {
     const financialContext = await buildFinancialContext(req.userId);
 
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
 
     // System instruction — makes it a financial AI agent
     const systemPrompt = `You are GastoTrack AI, an intelligent personal finance assistant for Filipino users. 

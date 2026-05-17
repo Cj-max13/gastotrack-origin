@@ -1,29 +1,115 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
-  TextInput, SectionList, ActivityIndicator, RefreshControl,
+  TextInput, SectionList, ActivityIndicator, RefreshControl, Modal, Alert, ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import api from '../services/api';
 
 // ── Constants ────────────────────────────────────────────────────────────────
-const FILTERS = ['All', 'GCash', 'Maya', 'Cash', 'Food', 'Travel'];
+const FILTERS = ['All', 'GCash', 'Maya', 'Cash', 'Food', 'Travel', 'Shopping', 'Health', 'Entertainment'];
+
+// ── Category options ──────────────────────────────────────────────────────────
+const CATEGORY_OPTIONS = [
+  { label: 'Food & Drinks',   icon: 'fast-food-outline',          color: '#E74C3C' },
+  { label: 'Groceries',       icon: 'cart-outline',               color: '#27AE60' },
+  { label: 'Transport',       icon: 'car-outline',                color: '#E67E22' },
+  { label: 'Entertainment',   icon: 'film-outline',               color: '#9B59B6' },
+  { label: 'Utilities',       icon: 'flash-outline',              color: '#3498DB' },
+  { label: 'Shopping',        icon: 'bag-outline',                color: '#EE4D2D' },
+  { label: 'Health',          icon: 'medkit-outline',             color: '#2ECC71' },
+  { label: 'Education',       icon: 'school-outline',             color: '#9B59B6' },
+  { label: 'Travel',          icon: 'airplane-outline',           color: '#3498DB' },
+  { label: 'Rent',            icon: 'home-outline',               color: '#34495E' },
+  { label: 'Insurance',       icon: 'shield-checkmark-outline',   color: '#16A085' },
+  { label: 'Fitness',         icon: 'barbell-outline',            color: '#E67E22' },
+  { label: 'Beauty',          icon: 'cut-outline',                color: '#E91E63' },
+  { label: 'Clothing',        icon: 'shirt-outline',              color: '#9C27B0' },
+  { label: 'Electronics',     icon: 'phone-portrait-outline',     color: '#607D8B' },
+  { label: 'Gifts',           icon: 'gift-outline',               color: '#F39C12' },
+  { label: 'Pets',            icon: 'paw-outline',                color: '#8E44AD' },
+  { label: 'Bills',           icon: 'receipt-outline',            color: '#C0392B' },
+  { label: 'Internet',        icon: 'wifi-outline',               color: '#2980B9' },
+  { label: 'Phone',           icon: 'call-outline',               color: '#27AE60' },
+  { label: 'Subscriptions',   icon: 'repeat-outline',             color: '#E74C3C' },
+  { label: 'Coffee',          icon: 'cafe-outline',               color: '#795548' },
+  { label: 'Restaurants',     icon: 'restaurant-outline',         color: '#FF5722' },
+  { label: 'Gas',             icon: 'speedometer-outline',        color: '#FF9800' },
+  { label: 'Parking',         icon: 'car-sport-outline',          color: '#9E9E9E' },
+  { label: 'Taxi/Ride',       icon: 'car-outline',                color: '#FFC107' },
+  { label: 'Books',           icon: 'book-outline',               color: '#5D4037' },
+  { label: 'Hobbies',         icon: 'game-controller-outline',    color: '#673AB7' },
+  { label: 'Sports',          icon: 'football-outline',           color: '#4CAF50' },
+  { label: 'Streaming',       icon: 'tv-outline',                 color: '#E91E63' },
+  { label: 'Gaming',          icon: 'game-controller-outline',    color: '#9C27B0' },
+  { label: 'Charity',         icon: 'heart-outline',              color: '#E91E63' },
+  { label: 'Savings',         icon: 'wallet-outline',             color: '#4CAF50' },
+  { label: 'Investments',     icon: 'trending-up-outline',        color: '#009688' },
+  { label: 'Loans',           icon: 'card-outline',               color: '#F44336' },
+  { label: 'Taxes',           icon: 'document-text-outline',      color: '#607D8B' },
+  { label: 'Childcare',       icon: 'happy-outline',              color: '#FF9800' },
+  { label: 'Home Maintenance',icon: 'hammer-outline',             color: '#795548' },
+  { label: 'Furniture',       icon: 'bed-outline',                color: '#8D6E63' },
+  { label: 'Laundry',         icon: 'water-outline',              color: '#00BCD4' },
+  { label: 'Personal Care',   icon: 'person-outline',             color: '#E91E63' },
+  { label: 'Medical',         icon: 'medical-outline',            color: '#F44336' },
+  { label: 'Pharmacy',        icon: 'bandage-outline',            color: '#4CAF50' },
+  { label: 'Office Supplies', icon: 'briefcase-outline',          color: '#607D8B' },
+  { label: 'Other',           icon: 'ellipsis-horizontal-outline',color: '#888'    },
+];
 
 // Map category/source keywords to icons and colors
 const ICON_MAP = {
-  'food':          { icon: 'fast-food-outline',       color: '#E74C3C' },
-  'dining':        { icon: 'restaurant-outline',      color: '#E67E22' },
-  'drinks':        { icon: 'cafe-outline',            color: '#00704A' },
-  'transport':     { icon: 'car-outline',             color: '#0057A8' },
-  'groceries':     { icon: 'bag-outline',             color: '#0057A8' },
-  'income':        { icon: 'cash-outline',            color: '#2ECC71' },
-  'utilities':     { icon: 'flash-outline',           color: '#E67E22' },
-  'entertainment': { icon: 'film-outline',            color: '#E50914' },
-  'shopping':      { icon: 'cart-outline',            color: '#EE4D2D' },
-  'travel':        { icon: 'airplane-outline',        color: '#3498DB' },
-  'health':        { icon: 'medkit-outline',          color: '#E74C3C' },
-  'education':     { icon: 'school-outline',          color: '#9B59B6' },
+  'food':            { icon: 'fast-food-outline',          color: '#E74C3C' },
+  'groceries':       { icon: 'cart-outline',               color: '#27AE60' },
+  'transport':       { icon: 'car-outline',                color: '#E67E22' },
+  'entertainment':   { icon: 'film-outline',               color: '#9B59B6' },
+  'utilities':       { icon: 'flash-outline',              color: '#3498DB' },
+  'shopping':        { icon: 'bag-outline',                color: '#EE4D2D' },
+  'health':          { icon: 'medkit-outline',             color: '#2ECC71' },
+  'education':       { icon: 'school-outline',             color: '#9B59B6' },
+  'travel':          { icon: 'airplane-outline',           color: '#3498DB' },
+  'rent':            { icon: 'home-outline',               color: '#34495E' },
+  'insurance':       { icon: 'shield-checkmark-outline',   color: '#16A085' },
+  'fitness':         { icon: 'barbell-outline',            color: '#E67E22' },
+  'beauty':          { icon: 'cut-outline',                color: '#E91E63' },
+  'clothing':        { icon: 'shirt-outline',              color: '#9C27B0' },
+  'electronics':     { icon: 'phone-portrait-outline',     color: '#607D8B' },
+  'gifts':           { icon: 'gift-outline',               color: '#F39C12' },
+  'pets':            { icon: 'paw-outline',                color: '#8E44AD' },
+  'bills':           { icon: 'receipt-outline',            color: '#C0392B' },
+  'internet':        { icon: 'wifi-outline',               color: '#2980B9' },
+  'phone':           { icon: 'call-outline',               color: '#27AE60' },
+  'subscriptions':   { icon: 'repeat-outline',             color: '#E74C3C' },
+  'coffee':          { icon: 'cafe-outline',               color: '#795548' },
+  'restaurants':     { icon: 'restaurant-outline',         color: '#FF5722' },
+  'dining':          { icon: 'restaurant-outline',         color: '#FF5722' },
+  'drinks':          { icon: 'cafe-outline',               color: '#795548' },
+  'gas':             { icon: 'speedometer-outline',        color: '#FF9800' },
+  'parking':         { icon: 'car-sport-outline',          color: '#9E9E9E' },
+  'taxi':            { icon: 'car-outline',                color: '#FFC107' },
+  'ride':            { icon: 'car-outline',                color: '#FFC107' },
+  'books':           { icon: 'book-outline',               color: '#5D4037' },
+  'hobbies':         { icon: 'game-controller-outline',    color: '#673AB7' },
+  'sports':          { icon: 'football-outline',           color: '#4CAF50' },
+  'streaming':       { icon: 'tv-outline',                 color: '#E91E63' },
+  'gaming':          { icon: 'game-controller-outline',    color: '#9C27B0' },
+  'charity':         { icon: 'heart-outline',              color: '#E91E63' },
+  'savings':         { icon: 'wallet-outline',             color: '#4CAF50' },
+  'investments':     { icon: 'trending-up-outline',        color: '#009688' },
+  'loans':           { icon: 'card-outline',               color: '#F44336' },
+  'taxes':           { icon: 'document-text-outline',      color: '#607D8B' },
+  'childcare':       { icon: 'happy-outline',              color: '#FF9800' },
+  'home':            { icon: 'hammer-outline',             color: '#795548' },
+  'maintenance':     { icon: 'hammer-outline',             color: '#795548' },
+  'furniture':       { icon: 'bed-outline',                color: '#8D6E63' },
+  'laundry':         { icon: 'water-outline',              color: '#00BCD4' },
+  'personal':        { icon: 'person-outline',             color: '#E91E63' },
+  'medical':         { icon: 'medical-outline',            color: '#F44336' },
+  'pharmacy':        { icon: 'bandage-outline',            color: '#4CAF50' },
+  'office':          { icon: 'briefcase-outline',          color: '#607D8B' },
+  'income':          { icon: 'cash-outline',               color: '#2ECC71' },
 };
 
 function getIconForCategory(category = '') {
@@ -68,13 +154,150 @@ function groupByDate(transactions) {
     }));
 }
 
+// ── Edit Transaction Modal ───────────────────────────────────────────────────
+function EditTransactionModal({ visible, transaction, onClose, onSave }) {
+  const [merchant, setMerchant]     = useState('');
+  const [amount, setAmount]         = useState('');
+  const [category, setCategory]     = useState(CATEGORY_OPTIONS[0]);
+  const [source, setSource]         = useState('');
+  const [loading, setLoading]       = useState(false);
+  const [showPicker, setShowPicker] = useState(false);
+
+  useEffect(() => {
+    if (transaction) {
+      setMerchant(transaction.merchant || '');
+      setAmount(Math.abs(transaction.amount).toString());
+      const foundCat = CATEGORY_OPTIONS.find(c => c.label === transaction.category);
+      setCategory(foundCat || CATEGORY_OPTIONS[0]);
+      setSource(transaction.source || '');
+    }
+  }, [transaction]);
+
+  const handleSave = async () => {
+    if (!merchant || !amount) {
+      Alert.alert('Missing fields', 'Please enter merchant and amount.');
+      return;
+    }
+    setLoading(true);
+    try {
+      const isIncome = transaction.amount > 0;
+      const res = await api.put(`/api/transactions/${transaction.id}`, {
+        merchant,
+        amount: isIncome ? Math.abs(parseFloat(amount)) : -Math.abs(parseFloat(amount)),
+        category: category.label,
+        source: source || 'manual',
+      });
+      onSave(res.data);
+      onClose();
+    } catch (err) {
+      Alert.alert('Error', err.response?.data?.error || 'Failed to update transaction.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (!transaction) return null;
+
+  return (
+    <Modal visible={visible} animationType="slide" transparent>
+      <View style={modal.overlay}>
+        <View style={modal.sheet}>
+          <View style={modal.header}>
+            <Text style={modal.title}>Edit Transaction</Text>
+            <TouchableOpacity onPress={onClose}>
+              <Ionicons name="close" size={24} color="#0D2B2B" />
+            </TouchableOpacity>
+          </View>
+
+          <Text style={modal.label}>Merchant / Description</Text>
+          <TextInput 
+            style={modal.input} 
+            placeholder="e.g. GrabFood" 
+            value={merchant} 
+            onChangeText={setMerchant} 
+          />
+
+          <Text style={modal.label}>Amount (₱)</Text>
+          <TextInput 
+            style={modal.input} 
+            placeholder="0.00" 
+            keyboardType="numeric" 
+            value={amount} 
+            onChangeText={setAmount} 
+          />
+
+          <Text style={modal.label}>Category</Text>
+          <TouchableOpacity style={modal.picker} onPress={() => setShowPicker(p => !p)}>
+            <View style={[modal.pickerIcon, { backgroundColor: category.color + '18' }]}>
+              <Ionicons name={category.icon} size={18} color={category.color} />
+            </View>
+            <Text style={modal.pickerText}>{category.label}</Text>
+            <Ionicons name={showPicker ? 'chevron-up' : 'chevron-down'} size={18} color="#AAA" />
+          </TouchableOpacity>
+
+          {showPicker && (
+            <ScrollView style={modal.dropdownList} nestedScrollEnabled>
+              {CATEGORY_OPTIONS.map(opt => (
+                <TouchableOpacity
+                  key={opt.label}
+                  style={modal.dropdownItem}
+                  onPress={() => { setCategory(opt); setShowPicker(false); }}
+                >
+                  <View style={[modal.pickerIcon, { backgroundColor: opt.color + '18' }]}>
+                    <Ionicons name={opt.icon} size={16} color={opt.color} />
+                  </View>
+                  <Text style={modal.dropdownText}>{opt.label}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          )}
+
+          <Text style={modal.label}>Payment Source</Text>
+          <TextInput 
+            style={modal.input} 
+            placeholder="e.g. GCash, Maya, Cash" 
+            value={source} 
+            onChangeText={setSource} 
+          />
+
+          <TouchableOpacity 
+            style={[modal.saveBtn, loading && { opacity: 0.7 }]} 
+            onPress={handleSave} 
+            disabled={loading}
+          >
+            {loading ? <ActivityIndicator color="#fff" /> : <Text style={modal.saveBtnText}>Save Changes</Text>}
+          </TouchableOpacity>
+
+          <TouchableOpacity style={modal.cancelBtn} onPress={onClose}>
+            <Text style={modal.cancelText}>Cancel</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
 // ── Transaction Row ──────────────────────────────────────────────────────────
-function TransactionRow({ item }) {
+function TransactionRow({ item, onEdit, onDelete }) {
   const isIncome = item.amount > 0;
   const { icon, color } = getIconForCategory(item.category);
 
   return (
-    <View style={s.txRow}>
+    <TouchableOpacity 
+      style={s.txRow}
+      onPress={() => onEdit(item)}
+      onLongPress={() =>
+        Alert.alert(
+          'Delete Transaction',
+          `Remove "${item.merchant}"?`,
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Delete', style: 'destructive', onPress: () => onDelete(item.id) },
+          ]
+        )
+      }
+      activeOpacity={0.7}
+    >
       <View style={[s.txIcon, { backgroundColor: color + '18' }]}>
         <Ionicons name={icon} size={20} color={color} />
       </View>
@@ -85,18 +308,20 @@ function TransactionRow({ item }) {
       <Text style={[s.txAmount, { color: isIncome ? '#2ECC71' : '#E74C3C' }]}>
         {isIncome ? '+ ' : '- '}₱{Math.abs(item.amount).toLocaleString('en-PH', { minimumFractionDigits: 2 })}
       </Text>
-    </View>
+    </TouchableOpacity>
   );
 }
 
 // ── History Screen ───────────────────────────────────────────────────────────
-export default function HistoryScreen() {
+export default function HistoryScreen({ navigation }) {
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading]           = useState(true);
   const [refreshing, setRefreshing]     = useState(false);
   const [error, setError]               = useState(null);
   const [search, setSearch]             = useState('');
   const [activeFilter, setFilter]       = useState('All');
+  const [editModalVisible, setEditModal] = useState(false);
+  const [selectedTransaction, setSelectedTx] = useState(null);
 
   const fetchTransactions = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
@@ -117,6 +342,14 @@ export default function HistoryScreen() {
   useEffect(() => {
     fetchTransactions();
   }, []);
+
+  // Refresh when screen comes into focus
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      fetchTransactions(true);
+    });
+    return unsubscribe;
+  }, [navigation]);
 
   const filtered = useMemo(() => {
     let list = transactions;
@@ -141,6 +374,26 @@ export default function HistoryScreen() {
   }, [transactions, search, activeFilter]);
 
   const sections = useMemo(() => groupByDate(filtered), [filtered]);
+
+  const handleEdit = (transaction) => {
+    setSelectedTx(transaction);
+    setEditModal(true);
+  };
+
+  const handleSave = (updatedTx) => {
+    setTransactions(prev => prev.map(tx => tx.id === updatedTx.id ? updatedTx : tx));
+    setEditModal(false);
+    setSelectedTx(null);
+  };
+
+  const handleDelete = async (id) => {
+    try {
+      await api.delete(`/api/transactions/${id}`);
+      setTransactions(prev => prev.filter(tx => tx.id !== id));
+    } catch (err) {
+      Alert.alert('Error', 'Failed to delete transaction.');
+    }
+  };
 
   return (
     <SafeAreaView style={s.safe}>
@@ -231,9 +484,16 @@ export default function HistoryScreen() {
           renderSectionHeader={({ section: { title } }) => (
             <Text style={s.sectionHeader}>{title}</Text>
           )}
-          renderItem={({ item }) => <TransactionRow item={item} />}
+          renderItem={({ item }) => <TransactionRow item={item} onEdit={handleEdit} onDelete={handleDelete} />}
         />
       )}
+
+      <EditTransactionModal
+        visible={editModalVisible}
+        transaction={selectedTransaction}
+        onClose={() => { setEditModal(false); setSelectedTx(null); }}
+        onSave={handleSave}
+      />
     </SafeAreaView>
   );
 }
@@ -280,4 +540,23 @@ const s = StyleSheet.create({
   emptyText:   { fontSize: 15, color: '#AAA' },
   retryBtn:    { backgroundColor: '#0D2B2B', paddingHorizontal: 24, paddingVertical: 10, borderRadius: 10 },
   retryText:   { color: '#fff', fontWeight: '600' },
+});
+
+const modal = StyleSheet.create({
+  overlay:      { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
+  sheet:        { backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, maxHeight: '90%' },
+  header:       { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
+  title:        { fontSize: 20, fontWeight: '700', color: '#0D2B2B' },
+  label:        { fontSize: 13, color: '#555', marginBottom: 6, marginTop: 8 },
+  input:        { borderWidth: 1, borderColor: '#DDD', borderRadius: 10, padding: 12, fontSize: 15, marginBottom: 8 },
+  picker:       { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: '#DDD', borderRadius: 10, padding: 12, marginBottom: 8 },
+  pickerIcon:   { width: 28, height: 28, borderRadius: 14, justifyContent: 'center', alignItems: 'center', marginRight: 10 },
+  pickerText:   { flex: 1, fontSize: 15, color: '#333' },
+  dropdownList: { borderWidth: 1, borderColor: '#EEE', borderRadius: 10, marginBottom: 16, maxHeight: 200, overflow: 'hidden' },
+  dropdownItem: { flexDirection: 'row', alignItems: 'center', padding: 10, borderBottomWidth: 1, borderBottomColor: '#F5F5F5' },
+  dropdownText: { fontSize: 14, color: '#333', marginLeft: 8 },
+  saveBtn:      { backgroundColor: '#0D2B2B', borderRadius: 12, paddingVertical: 14, alignItems: 'center', marginTop: 16, marginBottom: 10 },
+  saveBtnText:  { color: '#fff', fontSize: 16, fontWeight: '700' },
+  cancelBtn:    { alignItems: 'center', paddingVertical: 10 },
+  cancelText:   { color: '#888', fontSize: 14 },
 });

@@ -145,4 +145,142 @@ const getDashboard = async (req, res) => {
   }
 };
 
-module.exports = { getSummary, getDashboard };
+// GET /api/analytics/ai-insight — AI-generated spending insight
+const getAIInsight = async (req, res) => {
+  try {
+    const now = new Date();
+    const weekAgo = new Date(now);
+    weekAgo.setDate(now.getDate() - 7);
+    const twoWeeksAgo = new Date(now);
+    twoWeeksAgo.setDate(now.getDate() - 14);
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    // Get this week's transactions
+    const thisWeek = await prisma.transaction.findMany({
+      where: {
+        userId: req.userId,
+        date: { gte: weekAgo, lte: now },
+        amount: { lt: 0 },
+      },
+    });
+
+    // Get last week's transactions
+    const lastWeek = await prisma.transaction.findMany({
+      where: {
+        userId: req.userId,
+        date: { gte: twoWeeksAgo, lt: weekAgo },
+        amount: { lt: 0 },
+      },
+    });
+
+    // Get this month's transactions
+    const thisMonth = await prisma.transaction.findMany({
+      where: {
+        userId: req.userId,
+        date: { gte: monthStart, lte: now },
+        amount: { lt: 0 },
+      },
+    });
+
+    // Get budgets
+    const budgets = await prisma.budget.findMany({ where: { userId: req.userId } });
+
+    // Calculate category totals for this week
+    const thisWeekByCategory = {};
+    thisWeek.forEach(tx => {
+      const cat = tx.category || 'Uncategorized';
+      thisWeekByCategory[cat] = (thisWeekByCategory[cat] || 0) + Math.abs(tx.amount);
+    });
+
+    // Calculate category totals for last week
+    const lastWeekByCategory = {};
+    lastWeek.forEach(tx => {
+      const cat = tx.category || 'Uncategorized';
+      lastWeekByCategory[cat] = (lastWeekByCategory[cat] || 0) + Math.abs(tx.amount);
+    });
+
+    // Calculate category totals for this month
+    const thisMonthByCategory = {};
+    thisMonth.forEach(tx => {
+      const cat = tx.category || 'Uncategorized';
+      thisMonthByCategory[cat] = (thisMonthByCategory[cat] || 0) + Math.abs(tx.amount);
+    });
+
+    // Find biggest increase
+    let biggestIncrease = null;
+    let biggestIncreasePercent = 0;
+    Object.keys(thisWeekByCategory).forEach(cat => {
+      const thisWeekAmt = thisWeekByCategory[cat];
+      const lastWeekAmt = lastWeekByCategory[cat] || 0;
+      if (lastWeekAmt > 0) {
+        const pct = ((thisWeekAmt - lastWeekAmt) / lastWeekAmt) * 100;
+        if (pct > biggestIncreasePercent && pct > 10) {
+          biggestIncreasePercent = pct;
+          biggestIncrease = cat;
+        }
+      }
+    });
+
+    // Check budget status
+    const overBudget = [];
+    const nearLimit = [];
+    budgets.forEach(b => {
+      const spent = thisMonthByCategory[b.category] || 0;
+      const pct = spent / b.limitAmt;
+      if (spent > b.limitAmt) {
+        overBudget.push({ category: b.category, over: spent - b.limitAmt });
+      } else if (pct >= 0.8) {
+        nearLimit.push({ category: b.category, percent: Math.round(pct * 100) });
+      }
+    });
+
+    // Find highest spending category this month
+    const highestCategory = Object.entries(thisMonthByCategory)
+      .sort((a, b) => b[1] - a[1])[0];
+
+    // Generate insight
+    let insight = '';
+    let icon = 'chatbubble-ellipses-outline';
+
+    if (overBudget.length > 0) {
+      const cat = overBudget[0];
+      insight = `You've exceeded your ${cat.category} budget by ₱${cat.over.toFixed(0)}. Consider reducing expenses in this category.`;
+      icon = 'alert-circle-outline';
+    } else if (nearLimit.length > 0) {
+      const cat = nearLimit[0];
+      insight = `You're at ${cat.percent}% of your ${cat.category} budget. Watch your spending to stay on track.`;
+      icon = 'warning-outline';
+    } else if (biggestIncrease) {
+      insight = `Your ${biggestIncrease} expenses are ${Math.round(biggestIncreasePercent)}% higher this week. Consider reviewing recent purchases.`;
+      icon = 'trending-up-outline';
+    } else if (highestCategory && highestCategory[1] > 0) {
+      const pct = ((highestCategory[1] / thisMonth.reduce((s, t) => s + Math.abs(t.amount), 0)) * 100).toFixed(0);
+      insight = `${highestCategory[0]} is your top expense this month at ${pct}% of total spending. Look for savings opportunities.`;
+      icon = 'pie-chart-outline';
+    } else if (thisWeek.length === 0) {
+      insight = "No expenses recorded this week. Great job tracking your spending!";
+      icon = 'checkmark-circle-outline';
+    } else {
+      const thisWeekTotal = thisWeek.reduce((s, t) => s + Math.abs(t.amount), 0);
+      const lastWeekTotal = lastWeek.reduce((s, t) => s + Math.abs(t.amount), 0);
+      if (thisWeekTotal < lastWeekTotal) {
+        const saved = lastWeekTotal - thisWeekTotal;
+        insight = `You've spent ₱${saved.toFixed(0)} less this week compared to last week. Keep up the good work!`;
+        icon = 'trending-down-outline';
+      } else {
+        insight = "Your spending is steady. Keep monitoring your expenses to stay on budget.";
+        icon = 'checkmark-circle-outline';
+      }
+    }
+
+    res.json({ insight, icon });
+  } catch (err) {
+    console.error('[getAIInsight error]', err.message);
+    res.status(500).json({ 
+      insight: "Track your expenses to get personalized insights and recommendations.",
+      icon: 'chatbubble-ellipses-outline'
+    });
+  }
+};
+
+module.exports = { getSummary, getDashboard, getAIInsight };

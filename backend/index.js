@@ -80,5 +80,6 @@ app.listen(PORT, () => {
   console.log('  DELETE /api/budgets/:id');
   console.log('  GET    /api/analytics/summary?period=day|week|month');
   console.log('  GET    /api/analytics/dashboard');
+  console.log('  GET    /api/analytics/ai-insight');
   console.log('  POST   /api/ai/chat');
 });

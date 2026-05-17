@@ -10,7 +10,7 @@ import api from '../services/api';
 // ── Category options ──────────────────────────────────────────────────────────
 const CATEGORY_OPTIONS = [
   { label: 'Food & Drinks',   icon: 'fast-food-outline',          color: '#E74C3C' },
-  { label: 'Groceries',       icon: 'cart-outline',               color: '#E74C3C' },
+  { label: 'Groceries',       icon: 'cart-outline',               color: '#27AE60' },
   { label: 'Transport',       icon: 'car-outline',                color: '#E67E22' },
   { label: 'Entertainment',   icon: 'film-outline',               color: '#9B59B6' },
   { label: 'Utilities',       icon: 'flash-outline',              color: '#3498DB' },
@@ -18,6 +18,41 @@ const CATEGORY_OPTIONS = [
   { label: 'Health',          icon: 'medkit-outline',             color: '#2ECC71' },
   { label: 'Education',       icon: 'school-outline',             color: '#9B59B6' },
   { label: 'Travel',          icon: 'airplane-outline',           color: '#3498DB' },
+  { label: 'Rent',            icon: 'home-outline',               color: '#34495E' },
+  { label: 'Insurance',       icon: 'shield-checkmark-outline',   color: '#16A085' },
+  { label: 'Fitness',         icon: 'barbell-outline',            color: '#E67E22' },
+  { label: 'Beauty',          icon: 'cut-outline',                color: '#E91E63' },
+  { label: 'Clothing',        icon: 'shirt-outline',              color: '#9C27B0' },
+  { label: 'Electronics',     icon: 'phone-portrait-outline',     color: '#607D8B' },
+  { label: 'Gifts',           icon: 'gift-outline',               color: '#F39C12' },
+  { label: 'Pets',            icon: 'paw-outline',                color: '#8E44AD' },
+  { label: 'Bills',           icon: 'receipt-outline',            color: '#C0392B' },
+  { label: 'Internet',        icon: 'wifi-outline',               color: '#2980B9' },
+  { label: 'Phone',           icon: 'call-outline',               color: '#27AE60' },
+  { label: 'Subscriptions',   icon: 'repeat-outline',             color: '#E74C3C' },
+  { label: 'Coffee',          icon: 'cafe-outline',               color: '#795548' },
+  { label: 'Restaurants',     icon: 'restaurant-outline',         color: '#FF5722' },
+  { label: 'Gas',             icon: 'speedometer-outline',        color: '#FF9800' },
+  { label: 'Parking',         icon: 'car-sport-outline',          color: '#9E9E9E' },
+  { label: 'Taxi/Ride',       icon: 'car-outline',                color: '#FFC107' },
+  { label: 'Books',           icon: 'book-outline',               color: '#5D4037' },
+  { label: 'Hobbies',         icon: 'game-controller-outline',    color: '#673AB7' },
+  { label: 'Sports',          icon: 'football-outline',           color: '#4CAF50' },
+  { label: 'Streaming',       icon: 'tv-outline',                 color: '#E91E63' },
+  { label: 'Gaming',          icon: 'game-controller-outline',    color: '#9C27B0' },
+  { label: 'Charity',         icon: 'heart-outline',              color: '#E91E63' },
+  { label: 'Savings',         icon: 'wallet-outline',             color: '#4CAF50' },
+  { label: 'Investments',     icon: 'trending-up-outline',        color: '#009688' },
+  { label: 'Loans',           icon: 'card-outline',               color: '#F44336' },
+  { label: 'Taxes',           icon: 'document-text-outline',      color: '#607D8B' },
+  { label: 'Childcare',       icon: 'happy-outline',              color: '#FF9800' },
+  { label: 'Home Maintenance',icon: 'hammer-outline',             color: '#795548' },
+  { label: 'Furniture',       icon: 'bed-outline',                color: '#8D6E63' },
+  { label: 'Laundry',         icon: 'water-outline',              color: '#00BCD4' },
+  { label: 'Personal Care',   icon: 'person-outline',             color: '#E91E63' },
+  { label: 'Medical',         icon: 'medical-outline',            color: '#F44336' },
+  { label: 'Pharmacy',        icon: 'bandage-outline',            color: '#4CAF50' },
+  { label: 'Office Supplies', icon: 'briefcase-outline',          color: '#607D8B' },
   { label: 'Other',           icon: 'ellipsis-horizontal-outline',color: '#888'    },
 ];
 
@@ -125,7 +160,7 @@ function AddBudgetModal({ visible, onClose, onAdd }) {
           </TouchableOpacity>
 
           {showPicker && (
-            <View style={modal.dropdownList}>
+            <ScrollView style={modal.dropdownList} nestedScrollEnabled>
               {CATEGORY_OPTIONS.map(opt => (
                 <TouchableOpacity
                   key={opt.label}
@@ -138,7 +173,7 @@ function AddBudgetModal({ visible, onClose, onAdd }) {
                   <Text style={modal.dropdownText}>{opt.label}</Text>
                 </TouchableOpacity>
               ))}
-            </View>
+            </ScrollView>
           )}
 
           <Text style={modal.label}>Monthly Limit (₱)</Text>
@@ -163,7 +198,7 @@ function AddBudgetModal({ visible, onClose, onAdd }) {
 }
 
 // ── Budget Screen ─────────────────────────────────────────────────────────────
-export default function BudgetScreen() {
+export default function BudgetScreen({ navigation }) {
   const [budgets, setBudgets]       = useState([]);
   const [loading, setLoading]       = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -185,6 +220,14 @@ export default function BudgetScreen() {
   }, []);
 
   useEffect(() => { fetchBudgets(); }, []);
+
+  // Refresh when screen comes into focus
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      fetchBudgets(true);
+    });
+    return unsubscribe;
+  }, [navigation]);
 
   const handleAdd = (newBudget) => {
     setBudgets(prev => [...prev, newBudget]);
@@ -248,7 +291,7 @@ export default function BudgetScreen() {
             <Ionicons name="hardware-chip-outline" size={22} color="#A8D8D8" />
           </View>
           <View style={s.aiContent}>
-            <Text style={s.aiTitle}>AI Budget Analysis</Text>
+            <Text style={s.aiTitle}>Gasto</Text>
             <Text style={s.aiMsg}>{aiMsg}</Text>
           </View>
         </View>

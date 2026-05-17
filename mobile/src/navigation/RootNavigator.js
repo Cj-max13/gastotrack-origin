@@ -62,22 +62,22 @@ function MainTabs() {
         }}
       />
       <Tab.Screen
-        name="Transactions"
-        component={HistoryScreen}
-        options={{
-          tabBarLabel: 'History',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="list-outline" size={size} color={color} />
-          ),
-        }}
-      />
-      <Tab.Screen
         name="Budget"
         component={BudgetScreen}
         options={{
           tabBarLabel: 'Budget',
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="pie-chart-outline" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="Gasto"
+        component={AIAssistantScreen}
+        options={{
+          tabBarLabel: 'Gasto',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="chatbox-outline" size={size} color={color} />
           ),
         }}
       />
@@ -92,12 +92,12 @@ function MainTabs() {
         }}
       />
       <Tab.Screen
-        name="AI"
-        component={AIAssistantScreen}
+        name="Transactions"
+        component={HistoryScreen}
         options={{
-          tabBarLabel: 'AI',
+          tabBarLabel: 'History',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="chatbox-outline" size={size} color={color} />
+            <Ionicons name="list-outline" size={size} color={color} />
           ),
         }}
       />
