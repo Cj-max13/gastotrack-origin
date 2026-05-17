@@ -235,7 +235,7 @@ export default function DashboardScreen({ navigation }) {
         {/* ── Recent Activity ── */}
         <View style={s.sectionHeader}>
           <Text style={s.sectionTitle}>Recent Activity</Text>
-          <TouchableOpacity onPress={() => navigation.navigate('History')}>
+          <TouchableOpacity onPress={() => navigation.navigate('Transactions')}>
             <Text style={s.viewAll}>View All  ›</Text>
           </TouchableOpacity>
         </View>

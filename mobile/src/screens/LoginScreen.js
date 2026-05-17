@@ -5,14 +5,14 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import api from '../services/api';
+import { useAuth } from '../utils';
 
 export default function LoginScreen({ navigation }) {
   const [email, setEmail]         = useState('');
   const [password, setPassword]   = useState('');
   const [showPass, setShowPass]   = useState(false);
   const [loading, setLoading]     = useState(false);
+  const { login } = useAuth();
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -22,19 +22,7 @@ export default function LoginScreen({ navigation }) {
 
     setLoading(true);
     try {
-      const res = await api.post('/api/auth/login', { email, password });
-      
-      // Save token with error handling
-      try {
-        await AsyncStorage.setItem('token', res.data.token);
-        await AsyncStorage.setItem('user', JSON.stringify(res.data.user));
-      } catch (storageError) {
-        console.warn('Could not save to AsyncStorage:', storageError.message);
-        // Continue anyway - token will be in memory
-      }
-      
-      // Navigate to main app — replace so user can't go back to login
-      navigation.replace('MainApp');
+      await login(email, password);
     } catch (err) {
       const msg = err.response?.data?.error || 'Login failed. Please try again.';
       Alert.alert('Login Failed', msg);

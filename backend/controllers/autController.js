@@ -1,10 +1,18 @@
 const bcrypt = require('bcryptjs');
 const jwt    = require('jsonwebtoken');
-const { PrismaClient } = require('@prisma/client');
-const { PrismaPg }     = require('@prisma/adapter-pg');
+const prisma = require('../lib/prisma');
 
-const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
-const prisma  = new PrismaClient({ adapter });
+function signToken(userId) {
+  if (!process.env.JWT_SECRET) {
+    throw new Error('JWT_SECRET is not set. Add it to backend/.env.');
+  }
+
+  return jwt.sign(
+    { userId },
+    process.env.JWT_SECRET,
+    { expiresIn: '7d' }
+  );
+}
 
 const register = async (req, res) => {
   const { name, email, password } = req.body;
@@ -25,11 +33,7 @@ const register = async (req, res) => {
 
     console.log('[register] User created:', user.id);
 
-    const token = jwt.sign(
-      { userId: user.id },
-      process.env.JWT_SECRET,
-      { expiresIn: '7d' }
-    );
+    const token = signToken(user.id);
 
     res.status(201).json({ token, user: { id: user.id, name, email } });
   } catch (err) {
@@ -50,11 +54,7 @@ const login = async (req, res) => {
     if (!match)
       return res.status(400).json({ error: 'Invalid email or password' });
 
-    const token = jwt.sign(
-      { userId: user.id },
-      process.env.JWT_SECRET,
-      { expiresIn: '7d' }
-    );
+    const token = signToken(user.id);
 
     res.json({ token, user: { id: user.id, name: user.name, email } });
   } catch (err) {

@@ -3,7 +3,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Set EXPO_PUBLIC_API_URL in mobile/.env
 // e.g. EXPO_PUBLIC_API_URL=http://192.168.0.11:3000
-const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.0.11:3000';
+const configuredUrl = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.0.11:3000';
+const BASE_URL = configuredUrl.replace(/\/api\/?$/, '').replace(/\/$/, '');
 
 console.log('[API] BASE_URL:', BASE_URL);
 

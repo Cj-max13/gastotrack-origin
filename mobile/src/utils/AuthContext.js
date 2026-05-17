@@ -16,19 +16,21 @@ export const AuthProvider = ({ children }) => {
 
   const bootstrapAsync = async () => {
     try {
-      // Add a small delay to ensure AsyncStorage is initialized
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      try {
-        const storedToken = await AsyncStorage.getItem('token');
-        if (storedToken) {
-          setToken(storedToken);
+      const storedToken = await AsyncStorage.getItem('token');
+      if (storedToken) {
+        setToken(storedToken);
+        try {
+          const response = await api.get('/api/auth/me');
+          setUser(response.data);
+        } catch (authError) {
+          console.warn('Stored session is no longer valid:', authError.message);
+          await AsyncStorage.multiRemove(['token', 'user']);
+          setToken(null);
+          setUser(null);
         }
-      } catch (storageError) {
-        console.warn('AsyncStorage not available yet, skipping token restore:', storageError.message);
       }
-    } catch (e) {
-      console.error('Error during bootstrap:', e);
+    } catch (error) {
+      console.error('Error during bootstrap:', error);
     } finally {
       setLoading(false);
     }
@@ -36,7 +38,7 @@ export const AuthProvider = ({ children }) => {
 
   const register = async (name, email, password) => {
     try {
-      const response = await api.post('/auth/register', {
+      const response = await api.post('/api/auth/register', {
         name,
         email,
         password,
@@ -46,6 +48,7 @@ export const AuthProvider = ({ children }) => {
       // Try to save token, but don't fail if storage is unavailable
       try {
         await AsyncStorage.setItem('token', newToken);
+        await AsyncStorage.setItem('user', JSON.stringify(newUser));
       } catch (storageError) {
         console.warn('Could not save token to storage:', storageError.message);
       }
@@ -60,7 +63,7 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password) => {
     try {
-      const response = await api.post('/auth/login', {
+      const response = await api.post('/api/auth/login', {
         email,
         password,
       });
@@ -69,6 +72,7 @@ export const AuthProvider = ({ children }) => {
       // Try to save token, but don't fail if storage is unavailable
       try {
         await AsyncStorage.setItem('token', newToken);
+        await AsyncStorage.setItem('user', JSON.stringify(newUser));
       } catch (storageError) {
         console.warn('Could not save token to storage:', storageError.message);
       }
@@ -83,7 +87,7 @@ export const AuthProvider = ({ children }) => {
 
   const logout = async () => {
     try {
-      await AsyncStorage.removeItem('token');
+      await AsyncStorage.multiRemove(['token', 'user']);
     } catch (storageError) {
       console.warn('Could not remove token from storage:', storageError.message);
     }

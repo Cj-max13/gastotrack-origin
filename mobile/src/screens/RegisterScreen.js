@@ -6,8 +6,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import api from '../services/api';
+import { useAuth } from '../utils';
 
 export default function RegisterScreen({ navigation }) {
   const [name, setName]           = useState('');
@@ -18,6 +17,7 @@ export default function RegisterScreen({ navigation }) {
   const [showConf, setShowConf]   = useState(false);
   const [agreed, setAgreed]       = useState(false);
   const [loading, setLoading]     = useState(false);
+  const { register } = useAuth();
 
   const handleRegister = async () => {
     if (!name || !email || !password || !confirm) {
@@ -39,27 +39,12 @@ export default function RegisterScreen({ navigation }) {
 
     setLoading(true);
     try {
-      console.log('Attempting registration with:', { name, email });
-      const res = await api.post('/api/auth/register', { name, email, password });
-      console.log('Registration successful:', res.data);
-      
-      // Save token with error handling
-      try {
-        await AsyncStorage.setItem('token', res.data.token);
-        await AsyncStorage.setItem('user', JSON.stringify(res.data.user));
-      } catch (storageError) {
-        console.warn('Could not save to AsyncStorage:', storageError.message);
-        // Continue anyway - token will be in memory
-      }
-      
-      navigation.replace('MainApp');
+      await register(name, email, password);
     } catch (err) {
       console.error('Registration error:', {
         message: err.message,
         status: err.response?.status,
         data: err.response?.data,
-        url: err.config?.url,
-        baseURL: err.config?.baseURL,
       });
       const msg = err.response?.data?.error || err.message || 'Registration failed. Please try again.';
       Alert.alert('Error', msg);

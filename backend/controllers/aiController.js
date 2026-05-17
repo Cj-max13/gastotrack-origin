@@ -1,9 +1,5 @@
 const { GoogleGenerativeAI } = require('@google/generative-ai');
-const { PrismaClient }       = require('@prisma/client');
-const { PrismaPg }           = require('@prisma/adapter-pg');
-
-const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
-const prisma  = new PrismaClient({ adapter });
+const prisma = require('../lib/prisma');
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 

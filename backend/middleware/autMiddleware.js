@@ -9,6 +9,10 @@ const protect = (req, res, next) => {
   const token = authHeader.split(' ')[1];
 
   try {
+    if (!process.env.JWT_SECRET) {
+      return res.status(500).json({ error: 'JWT secret is not configured' });
+    }
+
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     req.userId = decoded.userId;
     next();
