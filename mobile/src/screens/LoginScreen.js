@@ -23,10 +23,18 @@ export default function LoginScreen({ navigation }) {
     setLoading(true);
     try {
       const res = await api.post('/api/auth/login', { email, password });
-      await AsyncStorage.setItem('token', res.data.token);
-      await AsyncStorage.setItem('user', JSON.stringify(res.data.user));
+      
+      // Save token with error handling
+      try {
+        await AsyncStorage.setItem('token', res.data.token);
+        await AsyncStorage.setItem('user', JSON.stringify(res.data.user));
+      } catch (storageError) {
+        console.warn('Could not save to AsyncStorage:', storageError.message);
+        // Continue anyway - token will be in memory
+      }
+      
       // Navigate to main app — replace so user can't go back to login
-      navigation.replace('Main');
+      navigation.replace('MainApp');
     } catch (err) {
       const msg = err.response?.data?.error || 'Login failed. Please try again.';
       Alert.alert('Login Failed', msg);
